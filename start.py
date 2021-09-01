@@ -3,7 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from functools import partial 
-from hangman import HangmanAPI
+from hangman import HangmanAPI, LanguageModelHangmanAPI
 
 
 class HangmanUI(QMainWindow): 
@@ -20,9 +20,12 @@ class HangmanUI(QMainWindow):
         self.setCentralWidget(self._centralWidget)
         self._centralWidget.setLayout(self.generalLayout)
 
-        print('initializing API...')
-        self.AI = HangmanAPI()
-        print('done.')
+        print('initializing NLP AI...')
+        _n = 8 
+        _weights = [1, 1, 10, 10, 10, 10, 10, 10] 
+        self.AI = LanguageModelHangmanAPI(n=_n, weights=_weights)
+        # self.AI = HangmanAPI()
+        print('Done.')
         
         print('Starting game...')
         self.startGame() 
@@ -48,11 +51,12 @@ class HangmanUI(QMainWindow):
 
     def initParams(self): 
         # initialize variables
-        self._previous_curr_word = None
         self.guessed_letters = []
         self.curr_word = ['_' for _ in range(self.wordlength)]
+        self._previous_curr_word = ['_' for _ in range(self.wordlength)]
         self.current_guess_letter = None
-         
+        self.number_of_tries_remaining = self.number_of_tries_remaining_cache
+
 
     def initLabelValues(self): 
         """
@@ -140,27 +144,35 @@ class HangmanUI(QMainWindow):
         QApplication.processEvents()
 
 
+    def _set_previous_word(self): 
+        """
+        Helper function to set the previous word
+        """
+        self._previous_curr_word = [] 
+        for w in self.curr_word: 
+            self._previous_curr_word.append(w) 
+
+
     def guess_next_letter(self): 
         """
         Link to the imported Hangman API to make guesses on the next letter in the word. 
         """
         self.past_guesses_label.setText("Past guesses: {}.".format(', '.join(self.guessed_letters)))
-
-        if self._previous_curr_word == self.curr_word: 
+        if self._previous_curr_word == self.curr_word:
             self.number_of_tries_remaining -= 1
             self.guess_label.setText("Remaining guesses : {}.".format(self.number_of_tries_remaining))
             if self.number_of_tries_remaining == 0: 
                 self.popup = ClosingPopUp(self, "Nice! We don't know your word!")
                 self.popup.setGeometry(QRect(100, 100, 400, 200))
                 self.popup.show()
-             
+
         _spaced_curr_word = ' '.join(s for s in self.curr_word)
         self.current_guess_letter = self.AI.guess(_spaced_curr_word)
         QApplication.processEvents()
         self.current_guess_label.setText("Current guess: "+self.current_guess_letter+" .")
         self.guessed_letters.append(self.current_guess_letter)
         self.AI.guessed_letters.append(self.current_guess_letter)
-        self._previous_curr_word = self.curr_word 
+        self._set_previous_word()
 
 
 class ParameterInputPopUp(QDialog): 
@@ -176,9 +188,12 @@ class ParameterInputPopUp(QDialog):
 
     def setMainGuiWordLength(self): 
         setattr(self.parent, self.attr_name, int(self.letter_entry.text()))
+        setattr(self.parent, self.attr_name+"_cache", int(self.letter_entry.text()))
+        
         self.close()
 
     def initUI(self): 
+        self.setWindowTitle('Set Parameters for Hangman')
         self.letter_question = QLabel(self.msg, self)
         self.letter_question.resize(200, 30)
         self.letter_question.font().setPointSize(14)
@@ -210,6 +225,7 @@ class ClosingPopUp(QWidget):
         self.initUI() 
 
     def initUI(self): 
+        self.setWindowTitle('Hangman')
         self.word_label = QLabel(self.msg, self)
         self.word_label.resize(700, 30)
         font1 = self.word_label.font()

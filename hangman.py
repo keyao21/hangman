@@ -175,8 +175,6 @@ class HangmanAPI(object):
             self.lose_words.append(actual_word)
 
 
-
-
     def start_game(self, verbose=True, train_test='train'):
         '''
         Plays a single game of hangman. Specify whether or not to use a word from the training
@@ -425,7 +423,6 @@ class LanguageModelHangmanAPI(HangmanAPI):
             for letter, weight in posterior_letter_distribution.items()
         }
         return normalized_posterior_letter_distribution
-    
     
     
     def guess(self, word): 
